@@ -2,14 +2,14 @@ import 'dart:async';
 import 'dart:io';
 
 void main(List<String> args) async {
-  if (args.length < 3) {
-    logError('Usage: dart run <script.dart> <directory> <target> <replacement> [--regex] [--exclude=<pattern>] [--dry-run] [--log=<log_file>]');
+  if (args.length < 2) {
+    logError('Usage: flutter_bulk_replace <directory_path> <target> <replacement> [--regex] [--exclude=<pattern>] [--dry-run] [--log=<log_file>]');
     exit(1);
   }
 
-  final directoryPath = args[0];
-  final target = args[1];
-  final replacement = args[2];
+  final directoryPath = args.length > 2 ? args[0] : Directory.current.path;
+  final target = args.length > 2 ? args[1] : args[0];
+  final replacement = args.length > 2 ? args[2] : args[1];
 
   final isRegex = args.contains('--regex');
   final isDryRun = args.contains('--dry-run');
