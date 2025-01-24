@@ -3,7 +3,7 @@ import 'dart:io';
 
 void main(List<String> args) async {
   if (args.length < 2) {
-    logError('Usage: flutter_bulk_replace <directory> <target> <replacement> [--regex] [--exclude=<pattern>] [--dry-run] [--log=<log_file>]');
+    logError('Usage: flutter_bulk_replace <target> <replacement> [--regex] [--exclude=<pattern>] [--dry-run] [--log=<log_file>]');
     exit(1);
   }
 
@@ -29,7 +29,6 @@ void main(List<String> args) async {
   logInfo('Starting replacement in directory: $directoryPath');
   logInfo('Replacing "${isRegex ? "regex pattern" : "string"}" "$target" with "$replacement"');
 
-  // 初始化日志文件
   final logFile = logFilePath != null ? File(logFilePath) : null;
   logFile?.writeAsStringSync('Replacement Log\n\n', mode: FileMode.write);
 
@@ -54,7 +53,7 @@ void main(List<String> args) async {
   logSuccess('\nReplacement completed! Processed $processedCount items.');
 }
 
-/// 递归处理目录中的文件名、文件夹名和文件内容
+/// 递归处理目录中的文件内容、文件名和文件夹名
 Future<void> _replaceInDirectory(
   Directory directory,
   String target,
@@ -67,19 +66,34 @@ Future<void> _replaceInDirectory(
 ) async {
   var processedCount = 0;
 
-  await for (var entity in directory.list(recursive: true, followLinks: false)) {
-    if (_shouldExclude(entity.path, excludePattern)) {
-      continue;
-    }
+  final subEntities = directory.listSync(recursive: false, followLinks: false);
 
-    if (entity is File) {
+  // 先处理文件夹内容，确保文件夹内的文件和子文件夹都被处理
+  for (final entity in subEntities) {
+    if (_shouldExclude(entity.path, excludePattern)) continue;
+
+    if (entity is Directory) {
+      await _replaceInDirectory(entity, target, replacement, isRegex, excludePattern, isDryRun, logFile, onProgress);
+    } else if (entity is File) {
       await _processFile(entity, target, replacement, isRegex, isDryRun, logFile);
-    } else if (entity is Directory) {
-      await _processDirectory(entity, target, replacement, isRegex, isDryRun, logFile);
     }
 
     processedCount++;
-    onProgress(processedCount); // 更新进度
+    onProgress(processedCount);
+  }
+
+  // 处理当前目录的文件夹名称
+  final dirName = directory.uri.pathSegments.isEmpty ? '' : directory.uri.pathSegments[directory.uri.pathSegments.length - 2];
+
+  if (dirName.isNotEmpty && (isRegex ? RegExp(target).hasMatch(dirName) : dirName.contains(target))) {
+    final newDirName = isRegex ? dirName.replaceAll(RegExp(target), replacement) : dirName.replaceAll(target, replacement);
+    final newPath = directory.parent.path + Platform.pathSeparator + newDirName;
+
+    if (!isDryRun) {
+      await directory.rename(newPath);
+    }
+    logSuccess('Renamed directory: $dirName -> $newDirName');
+    logFile?.writeAsStringSync('Renamed directory: $dirName -> $newDirName\n', mode: FileMode.append);
   }
 }
 
@@ -92,6 +106,7 @@ bool _shouldExclude(String path, String? excludePattern) {
 Future<void> _processFile(File file, String target, String replacement, bool isRegex, bool isDryRun, File? logFile) async {
   final fileName = file.uri.pathSegments.last;
 
+  // 替换文件名
   if (isRegex ? RegExp(target).hasMatch(fileName) : fileName.contains(target)) {
     final newFileName = isRegex ? fileName.replaceAll(RegExp(target), replacement) : fileName.replaceAll(target, replacement);
     final newPath = file.parent.path + Platform.pathSeparator + newFileName;
@@ -103,32 +118,17 @@ Future<void> _processFile(File file, String target, String replacement, bool isR
     logFile?.writeAsStringSync('Renamed file: $fileName -> $newFileName\n', mode: FileMode.append);
   }
 
-  final content = await file.readAsString();
-  if (isRegex ? RegExp(target).hasMatch(content) : content.contains(target)) {
-    final updatedContent = isRegex ? content.replaceAll(RegExp(target), replacement) : content.replaceAll(target, replacement);
-
-    if (!isDryRun) {
-      await file.writeAsString(updatedContent);
-    }
-    logSuccess('Updated file content: ${file.path}');
-    logFile?.writeAsStringSync('Updated file content: ${file.path}\n', mode: FileMode.append);
-  }
-}
-
-/// 处理文件夹名称
-Future<void> _processDirectory(Directory directory, String target, String replacement, bool isRegex, bool isDryRun, File? logFile) async {
-  final dirName = directory.uri.pathSegments.last;
-
-  if (isRegex ? RegExp(target).hasMatch(dirName) : dirName.contains(target)) {
-    final newDirName = isRegex ? dirName.replaceAll(RegExp(target), replacement) : dirName.replaceAll(target, replacement);
-    final newPath = directory.parent.path + Platform.pathSeparator + newDirName;
-
-    if (!isDryRun) {
-      await directory.rename(newPath);
-    }
-    logSuccess('Renamed directory: $dirName -> $newDirName');
-    logFile?.writeAsStringSync('Renamed directory: $dirName -> $newDirName\n', mode: FileMode.append);
-  }
+  // // 替换文件内容
+  // final content = await file.readAsString();
+  // if (isRegex ? RegExp(target).hasMatch(content) : content.contains(target)) {
+  //   final updatedContent = isRegex ? content.replaceAll(RegExp(target), replacement) : content.replaceAll(target, replacement);
+  //
+  //   if (!isDryRun) {
+  //     await file.writeAsString(updatedContent);
+  //   }
+  //   logSuccess('Updated file content: ${file.path}');
+  //   logFile?.writeAsStringSync('Updated file content: ${file.path}\n', mode: FileMode.append);
+  // }
 }
 
 /// 统计目录中所有文件和文件夹的数量
