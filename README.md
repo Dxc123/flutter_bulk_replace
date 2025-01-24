@@ -5,15 +5,6 @@
 文件内容替换：替换文件内容中出现的目标字符串。
 递归扫描：支持扫描子目录中的所有文件和文件夹。
 
-
-使用：
-flutter_bulk_replace <directory> <target> <replacement>
-
-示例: 
- flutter_bulk_replace /path/to/directory "old_string" "new_string"
-
-
-
 新增功能:
 
 1.支持正则表达式：
@@ -33,7 +24,24 @@ flutter_bulk_replace <directory> <target> <replacement>
 使用 --log=<log_file> 将操作记录保存到文件。
 
 
+
+使用：
+dart pub global activate -sgit https://github.com/Dxc123/flutter_bulk_replace.git
+
+
 使用示例：
 
-flutter_bulk_replace ./my_project "old" "new" --regex --exclude=".*\.git.*" --dry-run --log=log.txt
+在当前目录运行替换：
+
+flutter_bulk_replace "old" "new"
+
+flutter_bulk_replace "old" "new" --regex --exclude=".*\.git.*" --log=log.txt
+
+指定目录替换：
+
+flutter_bulk_replace /target_directory "old" "new"
+
+flutter_bulk_replace /target_directory "old" "new" --regex --exclude=".*\.git.*" --log=log.txt
+
+
 
