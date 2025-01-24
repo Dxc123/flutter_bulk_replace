@@ -3,7 +3,7 @@ import 'dart:io';
 
 void main(List<String> args) async {
   if (args.length < 2) {
-    logError('Usage: flutter_bulk_replace <directory_path> <target> <replacement> [--regex] [--exclude=<pattern>] [--dry-run] [--log=<log_file>]');
+    logError('Usage: flutter_bulk_replace <directory> <target> <replacement> [--regex] [--exclude=<pattern>] [--dry-run] [--log=<log_file>]');
     exit(1);
   }
 
@@ -13,8 +13,12 @@ void main(List<String> args) async {
 
   final isRegex = args.contains('--regex');
   final isDryRun = args.contains('--dry-run');
-  final logFilePath = args.firstWhere((arg) => arg.startsWith('--log='), orElse: () => "").substring(6);
-  final excludePattern = args.firstWhere((arg) => arg.startsWith('--exclude='), orElse: () => "").substring(10);
+
+  final logFileArg = args.firstWhere((arg) => arg.startsWith('--log='), orElse: () => '');
+  final logFilePath = logFileArg.isNotEmpty ? logFileArg.substring(6) : null;
+
+  final excludeArg = args.firstWhere((arg) => arg.startsWith('--exclude='), orElse: () => '');
+  final excludePattern = excludeArg.isNotEmpty ? excludeArg.substring(10) : null;
 
   final rootDirectory = Directory(directoryPath);
   if (!rootDirectory.existsSync()) {
@@ -26,7 +30,7 @@ void main(List<String> args) async {
   logInfo('Replacing "${isRegex ? "regex pattern" : "string"}" "$target" with "$replacement"');
 
   // 初始化日志文件
-  final logFile = logFilePath.isNotEmpty ? File(logFilePath) : null;
+  final logFile = logFilePath != null ? File(logFilePath) : null;
   logFile?.writeAsStringSync('Replacement Log\n\n', mode: FileMode.write);
 
   final totalEntities = await _countEntities(rootDirectory, excludePattern);
