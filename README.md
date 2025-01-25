@@ -21,9 +21,10 @@
 
 
 
-使用：
+使用： 安装到本地：(需要Flutter环境)
 dart pub global activate -sgit https://github.com/Dxc123/flutter_bulk_replace.git
 
+本地移除：dart pub global deactivate flutter_bulk_replace
 
 使用示例：
 
